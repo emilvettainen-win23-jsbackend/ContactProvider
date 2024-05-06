@@ -5,24 +5,40 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Diagnostics;
 
 var host = new HostBuilder()
     .ConfigureFunctionsWebApplication()
-    .ConfigureAppConfiguration((hostingContext, config) =>
-    {
-        config.AddJsonFile("local.settings.json", optional: true, reloadOnChange: true);
-        config.AddEnvironmentVariables();
-    })
+
     .ConfigureServices((context, services) =>
     {
         services.AddApplicationInsightsTelemetryWorkerService();
         services.ConfigureFunctionsApplicationInsights();
 
-        var configuration = context.Configuration;
-
         services.AddDbContext<DataContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("AzureSql")));
+            options.UseSqlServer(Environment.GetEnvironmentVariable("AzureSql")));
 
-        services.AddSingleton(new ServiceBusClient(configuration.GetConnectionString("ServiceBusConnection")));
+        services.AddSingleton(new ServiceBusClient(Environment.GetEnvironmentVariable("ServiceBusConnection")));
     })
     .Build();
+
+using (var scope = host.Services.CreateScope())
+{
+    try
+    {
+        var context = scope.ServiceProvider.GetRequiredService<DataContext>();
+        var migration = context.Database.GetPendingMigrations();
+        if (migration != null && migration.Any())
+        {
+            context.Database.Migrate();
+        }
+    }
+    catch (Exception ex)
+    {
+
+        Debug.WriteLine(ex.Message);
+    }
+}
+
+
+host.Run();
