@@ -1,5 +1,6 @@
 using Azure.Messaging.ServiceBus;
 using ContactProvider.Contexts;
+using ContactProvider.Services;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -15,10 +16,10 @@ var host = new HostBuilder()
         services.AddApplicationInsightsTelemetryWorkerService();
         services.ConfigureFunctionsApplicationInsights();
 
-        services.AddDbContext<DataContext>(options =>
-            options.UseSqlServer(Environment.GetEnvironmentVariable("AzureSql")));
-
+        services.AddDbContext<DataContext>(options => options.UseSqlServer(Environment.GetEnvironmentVariable("AzureSql")));
         services.AddSingleton(new ServiceBusClient(Environment.GetEnvironmentVariable("ServiceBusConnection")));
+
+        services.AddScoped<ContactService>();
     })
     .Build();
 
